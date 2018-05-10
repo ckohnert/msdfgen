@@ -111,7 +111,7 @@ static void addArcApproximate(Contour &contour, Point2 startPoint, Point2 endPoi
     if (endPoint == startPoint)
         return;
     if (radius.x == 0 || radius.y == 0)
-        return contour.addEdge(new LinearSegment(startPoint, endPoint));
+        return contour.addEdge(LinearSegment(startPoint, endPoint));
 
     radius.x = fabs(radius.x);
     radius.y = fabs(radius.y);
@@ -152,7 +152,7 @@ static void addArcApproximate(Contour &contour, Point2 startPoint, Point2 endPoi
         d.set(cos(angle), sin(angle));
         controlPoint[1] = center+rotateVector(Vector2(d.x+cl*d.y, d.y-cl*d.x)*radius, axis);
         Point2 node = i == segments-1 ? endPoint : center+rotateVector(d*radius, axis);
-        contour.addEdge(new CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
+        contour.addEdge(CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
         prevNode = node;
     }
 }
@@ -191,19 +191,19 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
                     REQUIRE(readCoord(node, pathDef));
                     if (nodeType == 'l')
                         node += prevNode;
-                    contour.addEdge(new LinearSegment(prevNode, node));
+                    contour.addEdge(LinearSegment(prevNode, node));
                     break;
                 case 'H': case 'h':
                     REQUIRE(readDouble(node.x, pathDef));
                     if (nodeType == 'h')
                         node.x += prevNode.x;
-                    contour.addEdge(new LinearSegment(prevNode, node));
+                    contour.addEdge(LinearSegment(prevNode, node));
                     break;
                 case 'V': case 'v':
                     REQUIRE(readDouble(node.y, pathDef));
                     if (nodeType == 'v')
                         node.y += prevNode.y;
-                    contour.addEdge(new LinearSegment(prevNode, node));
+                    contour.addEdge(LinearSegment(prevNode, node));
                     break;
                 case 'Q': case 'q':
                     REQUIRE(readCoord(controlPoint[0], pathDef));
@@ -212,7 +212,7 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
                         controlPoint[0] += prevNode;
                         node += prevNode;
                     }
-                    contour.addEdge(new QuadraticSegment(prevNode, controlPoint[0], node));
+                    contour.addEdge(QuadraticSegment(prevNode, controlPoint[0], node));
                     break;
                 case 'T': case 't':
                     if (prevNodeType == 'Q' || prevNodeType == 'q' || prevNodeType == 'T' || prevNodeType == 't')
@@ -222,7 +222,7 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
                     REQUIRE(readCoord(node, pathDef));
                     if (nodeType == 't')
                         node += prevNode;
-                    contour.addEdge(new QuadraticSegment(prevNode, controlPoint[0], node));
+                    contour.addEdge(QuadraticSegment(prevNode, controlPoint[0], node));
                     break;
                 case 'C': case 'c':
                     REQUIRE(readCoord(controlPoint[0], pathDef));
@@ -233,7 +233,7 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
                         controlPoint[1] += prevNode;
                         node += prevNode;
                     }
-                    contour.addEdge(new CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
+                    contour.addEdge(CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
                     break;
                 case 'S': case 's':
                     if (prevNodeType == 'C' || prevNodeType == 'c' || prevNodeType == 'S' || prevNodeType == 's')
@@ -246,7 +246,7 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
                         controlPoint[1] += prevNode;
                         node += prevNode;
                     }
-                    contour.addEdge(new CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
+                    contour.addEdge(CubicSegment(prevNode, controlPoint[0], controlPoint[1], node));
                     break;
                 case 'A': case 'a':
                     {
@@ -276,10 +276,10 @@ static bool buildFromPath(Shape &shape, const char *pathDef, double size) {
     NEXT_CONTOUR:
         // Fix contour if it isn't properly closed
         if (!contour.edges.empty() && prevNode != startPoint) {
-            if ((contour.edges[contour.edges.size()-1]->point(1)-contour.edges[0]->point(0)).length() < ENDPOINT_SNAP_RANGE_PROPORTION*size)
-                contour.edges[contour.edges.size()-1]->moveEndPoint(contour.edges[0]->point(0));
+            if ((contour.edges[contour.edges.size()-1].point(1)-contour.edges[0].point(0)).length() < ENDPOINT_SNAP_RANGE_PROPORTION*size)
+                contour.edges[contour.edges.size()-1].moveEndPoint(contour.edges[0].point(0));
             else
-                contour.addEdge(new LinearSegment(prevNode, startPoint));
+                contour.addEdge(LinearSegment(prevNode, startPoint));
         }
         prevNodeType = nodeType;
         prevNode = startPoint;

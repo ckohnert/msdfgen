@@ -15,6 +15,10 @@ bool savePng(const Bitmap<float> &bitmap, const char *filename) {
     return !lodepng::encode(filename, pixels, bitmap.width(), bitmap.height(), LCT_GREY);
 }
 
+bool savePng(const Bitmap<uint8_t> &bitmap, const char *filename) {
+	return !lodepng::encode(filename, bitmap.contentMemory(), bitmap.width(), bitmap.height(), LCT_GREY);
+}
+
 bool savePng(const Bitmap<FloatRGB> &bitmap, const char *filename) {
     std::vector<unsigned char> pixels(3*bitmap.width()*bitmap.height());
     std::vector<unsigned char>::iterator it = pixels.begin();

@@ -22,29 +22,18 @@
 #include "core/edge-coloring.h"
 #include "core/render-sdf.h"
 #include "core/save-bmp.h"
-#include "core/shape-description.h"
 
 #define MSDFGEN_VERSION "1.5"
 
 namespace msdfgen {
 
 /// Generates a conventional single-channel signed distance field.
-void generateSDF(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
+void generateSDF(Bitmap<unsigned char> &output, const Shape &shape, double bound_l, double range, const Vector2 &scale, const Vector2 &translate);
 
 /// Generates a single-channel signed pseudo-distance field.
-void generatePseudoSDF(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
+//void generatePseudoSDF(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
 
 /// Generates a multi-channel signed distance field. Edge colors must be assigned first! (see edgeColoringSimple)
-void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold = 1.00000001);
-
-// Original simpler versions of the previous functions, which work well under normal circumstances, but cannot deal with overlapping contours.
-void generateSDF_v1(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
-void generatePseudoSDF_v1(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
-void generateMSDF_v1(Bitmap<FloatRGB> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold = 1.00000001);
-
-// Pre-fill-rule versions.
-void generateSDF_v2(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
-void generatePseudoSDF_v2(Bitmap<float> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate);
-void generateMSDF_v2(Bitmap<FloatRGB> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold = 1.00000001);
+//void generateMSDF(Bitmap<FloatRGB> &output, const Shape &shape, double range, const Vector2 &scale, const Vector2 &translate, double edgeThreshold = 1.00000001);
 
 }

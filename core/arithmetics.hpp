@@ -1,10 +1,27 @@
 
 #pragma once
 
-#include <cstdlib>
+#define _USE_MATH_DEFINES
 #include <cmath>
+#include <cstdlib>
 
 namespace msdfgen {
+
+inline float approxSquareRoot(double dx)
+{
+    float x = (float)dx;
+
+	const float xhalf = 0.5f*x;
+
+	union // get bits for floating value
+	{
+		float x;
+		int i;
+	} u;
+	u.x = x;
+	u.i = 0x5f3759df - (u.i >> 1);  // gives initial guess y0
+	return x * u.x*(1.5f - xhalf * u.x*u.x);// Newton step, repeating increases accuracy 
+}
 
 /// Returns the smaller of the arguments.
 template <typename T>

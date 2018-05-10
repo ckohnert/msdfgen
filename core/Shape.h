@@ -39,6 +39,8 @@ public:
     bool validate() const;
     /// Computes the shape's bounding box.
     void bounds(double &l, double &b, double &r, double &t) const;
+	/// concatenate all the counours together, after this call countours size will be <= 1
+	void mergeContours();
 
 };
 

@@ -71,7 +71,23 @@ const T & Bitmap<T>::operator()(int x, int y) const {
     return content[y*w+x];
 }
 
+template<typename T>
+T * Bitmap<T>::takeMemoryAway()
+{
+	T *temp = content;
+	w = h = 0;
+	content = nullptr;
+	return temp;
+}
+
+template<typename T>
+const T * Bitmap<T>::contentMemory() const
+{
+	return content;
+}
+
 template class Bitmap<float>;
 template class Bitmap<FloatRGB>;
+template class Bitmap<unsigned char>;
 
 }

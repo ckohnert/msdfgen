@@ -93,48 +93,48 @@ static bool parseAngle(double &value, const char *arg) {
     return false;
 }
 
-static void parseColoring(Shape &shape, const char *edgeAssignment) {
-    unsigned c = 0, e = 0;
-    if (shape.contours.size() < c) return;
-    Contour *contour = &shape.contours[c];
-    bool change = false;
-    bool clear = true;
-    for (const char *in = edgeAssignment; *in; ++in) {
-        switch (*in) {
-            case ',':
-                if (change)
-                    ++e;
-                if (clear)
-                    while (e < contour->edges.size()) {
-                        contour->edges[e]->color = WHITE;
-                        ++e;
-                    }
-                ++c, e = 0;
-                if (shape.contours.size() <= c) return;
-                contour = &shape.contours[c];
-                change = false;
-                clear = true;
-                break;
-            case '?':
-                clear = false;
-                break;
-            case 'C': case 'M': case 'W': case 'Y': case 'c': case 'm': case 'w': case 'y':
-                if (change) {
-                    ++e;
-                    change = false;
-                }
-                if (e < contour->edges.size()) {
-                    contour->edges[e]->color = EdgeColor(
-                        (*in == 'C' || *in == 'c')*CYAN|
-                        (*in == 'M' || *in == 'm')*MAGENTA|
-                        (*in == 'Y' || *in == 'y')*YELLOW|
-                        (*in == 'W' || *in == 'w')*WHITE);
-                    change = true;
-                }
-                break;
-        }
-    }
-}
+//static void parseColoring(Shape &shape, const char *edgeAssignment) {
+//    unsigned c = 0, e = 0;
+//    if (shape.contours.size() < c) return;
+//    Contour *contour = &shape.contours[c];
+//    bool change = false;
+//    bool clear = true;
+//    for (const char *in = edgeAssignment; *in; ++in) {
+//        switch (*in) {
+//            case ',':
+//                if (change)
+//                    ++e;
+//                if (clear)
+//                    while (e < contour->edges.size()) {
+//                        contour->edges[e]->color = WHITE;
+//                        ++e;
+//                    }
+//                ++c, e = 0;
+//                if (shape.contours.size() <= c) return;
+//                contour = &shape.contours[c];
+//                change = false;
+//                clear = true;
+//                break;
+//            case '?':
+//                clear = false;
+//                break;
+//            case 'C': case 'M': case 'W': case 'Y': case 'c': case 'm': case 'w': case 'y':
+//                if (change) {
+//                    ++e;
+//                    change = false;
+//                }
+//                if (e < contour->edges.size()) {
+//                    contour->edges[e]->color = EdgeColor(
+//                        (*in == 'C' || *in == 'c')*CYAN|
+//                        (*in == 'M' || *in == 'm')*MAGENTA|
+//                        (*in == 'Y' || *in == 'y')*YELLOW|
+//                        (*in == 'W' || *in == 'w')*WHITE);
+//                    change = true;
+//                }
+//                break;
+//        }
+//    }
+//}
 
 static void invertColor(Bitmap<FloatRGB> &bitmap) {
     for (int y = 0; y < bitmap.height(); ++y)
@@ -149,6 +149,12 @@ static void invertColor(Bitmap<float> &bitmap) {
     for (int y = 0; y < bitmap.height(); ++y)
         for (int x = 0; x < bitmap.width(); ++x)
             bitmap(x, y) = 1.f-bitmap(x, y);
+}
+
+static void invertColor(Bitmap<uint8_t> &bitmap) {
+	for (int y = 0; y < bitmap.height(); ++y)
+		for (int x = 0; x < bitmap.width(); ++x)
+			bitmap(x, y) = 255 - bitmap(x, y);
 }
 
 static bool writeTextBitmap(FILE *file, const float *values, int cols, int rows) {
@@ -211,7 +217,9 @@ static bool cmpExtension(const char *path, const char *ext) {
 }
 
 template <typename T>
-static const char * writeOutput(const Bitmap<T> &bitmap, const char *filename, Format format) {
+static const char * writeOutput(const Bitmap<T> &bitmap, const std::string &pnn, Format format) {
+    const char *filename = pnn.size() ? pnn.c_str() : nullptr;
+
     if (filename) {
         if (format == AUTO) {
             if (cmpExtension(filename, ".png")) format = PNG;
@@ -340,16 +348,13 @@ static const char *helpText =
     "\n";
 
 int main(int argc, const char * const *argv) {
-    #define ABORT(msg) { puts(msg); return 1; }
+    #define ABORT(msg) { puts(msg); getchar(); return 1; }
 
     // Parse command line arguments
     enum {
         NONE,
         SVG,
         FONT,
-        DESCRIPTION_ARG,
-        DESCRIPTION_STDIN,
-        DESCRIPTION_FILE
     } inputType = NONE;
     enum {
         SINGLE,
@@ -357,16 +362,16 @@ int main(int argc, const char * const *argv) {
         MULTI,
         METRICS
     } mode = MULTI;
-    unsigned int legacyMode = 0;
     Format format = AUTO;
     const char *input = NULL;
-    const char *output = "output.png";
-    const char *shapeExport = NULL;
+    std::string outputName = "output.png";
     const char *testRender = NULL;
     const char *testRenderMulti = NULL;
     bool outputSpecified = false;
+    bool outputOffsets = false;
     int unicode = 0;
     int svgPathIndex = 0;
+    std::string outputPath;
 
     int width = 64, height = 64;
     int testWidth = 0, testHeight = 0;
@@ -400,7 +405,14 @@ int main(int argc, const char * const *argv) {
         const char *arg = argv[argPos];
         #define ARG_CASE(s, p) if (!strcmp(arg, s) && argPos+(p) < argc)
         #define ARG_MODE(s, m) if (!strcmp(arg, s)) { mode = m; ++argPos; continue; }
-        #define SETFORMAT(fmt, ext) do { format = fmt; if (!outputSpecified) output = "output." ext; } while (false)
+        #define SETFORMAT(fmt, ext) \
+            do { \
+                format = fmt; \
+                if (!outputSpecified) \
+                    outputName = "output." ext; \
+                else if (!strchr(outputName.c_str(), '.')) \
+                    outputName += "." ext; \
+            } while (false)
 
         ARG_MODE("sdf", SINGLE)
         ARG_MODE("psdf", PSEUDO)
@@ -421,49 +433,30 @@ int main(int argc, const char * const *argv) {
             inputType = FONT;
             input = argv[argPos+1];
             parseUnicode(unicode, argv[argPos+2]);
+            outputName = argv[argPos + 2];
+            if (outputName[0] == '0' && (outputName[1] == 'x' || outputName[1] == 'X'))
+            {
+                outputName = outputName.substr(2);
+            }
+            outputSpecified = true;
+            outputOffsets = true;
             argPos += 3;
             continue;
         }
-        ARG_CASE("-defineshape", 1) {
-            inputType = DESCRIPTION_ARG;
-            input = argv[argPos+1];
-            argPos += 2;
-            continue;
-        }
-        ARG_CASE("-stdin", 0) {
-            inputType = DESCRIPTION_STDIN;
-            input = "stdin";
-            argPos += 1;
-            continue;
-        }
-        ARG_CASE("-shapedesc", 1) {
-            inputType = DESCRIPTION_FILE;
-            input = argv[argPos+1];
+        ARG_CASE("-path", 1) {
+            outputPath = argv[argPos + 1];
             argPos += 2;
             continue;
         }
         ARG_CASE("-o", 1) {
-            output = argv[argPos+1];
+            outputName = argv[argPos+1];
             outputSpecified = true;
             argPos += 2;
             continue;
         }
         ARG_CASE("-stdout", 0) {
-            output = NULL;
+            outputName.clear();
             argPos += 1;
-            continue;
-        }
-        ARG_CASE("-legacy", 0) {
-            legacyMode = 1;
-            argPos += 1;
-            // Optional mode specifier
-            if( argPos+1 < argc && parseUnsigned(legacyMode, argv[argPos]) ) {
-                argPos += 1;
-            }
-            if (legacyMode > 2) {
-                ABORT("Invalid legacy mode");
-            }
-            
             continue;
         }
         ARG_CASE("-format", 1) {
@@ -566,11 +559,6 @@ int main(int argc, const char * const *argv) {
             argPos += 2;
             continue;
         }
-        ARG_CASE("-exportshape", 1) {
-            shapeExport = argv[argPos+1];
-            argPos += 2;
-            continue;
-        }
         ARG_CASE("-testrender", 3) {
             unsigned w, h;
             if (!parseUnsigned(w, argv[argPos+2]) || !parseUnsigned(h, argv[argPos+3]) || !w || !h)
@@ -620,12 +608,6 @@ int main(int argc, const char * const *argv) {
             argPos += 2;
             continue;
         }
-        ARG_CASE("-tolerance", 1) {
-        	if (!parseDouble(Vector2::Epsilon, argv[argPos+1]) || Vector2::Epsilon < 0 )
-        		ABORT("Invalid Tolerance value. Use -tolerance <N> with a value >= 0.0.");
-        	argPos += 2;
-        	continue;
-        }
         ARG_CASE("-help", 0)
             ABORT(helpText);
         printf("Unknown setting or insufficient parameters: %s\n", arg);
@@ -666,25 +648,6 @@ int main(int argc, const char * const *argv) {
             deinitializeFreetype(ft);
             break;
         }
-        case DESCRIPTION_ARG: {
-            if (!readShapeDescription(input, shape, &skipColoring))
-                ABORT("Parse error in shape description.");
-            break;
-        }
-        case DESCRIPTION_STDIN: {
-            if (!readShapeDescription(stdin, shape, &skipColoring))
-                ABORT("Parse error in shape description.");
-            break;
-        }
-        case DESCRIPTION_FILE: {
-            FILE *file = fopen(input, "r");
-            if (!file)
-                ABORT("Failed to load shape description file.");
-            if (!readShapeDescription(file, shape, &skipColoring))
-                ABORT("Parse error in shape description.");
-            fclose(file);
-            break;
-        }
         default:
             break;
     }
@@ -693,7 +656,7 @@ int main(int argc, const char * const *argv) {
     if (!shape.validate())
         ABORT("The geometry of the loaded shape is invalid.");
     shape.normalize();
-    if (yFlip)
+    if (!yFlip)
         shape.inverseYAxis = !shape.inverseYAxis;
 
     double avgScale = .5*(scale.x+scale.y);
@@ -736,11 +699,34 @@ int main(int argc, const char * const *argv) {
     if (rangeMode == RANGE_PX)
         range = pxRange/min(scale.x, scale.y);
 
+    if (outputOffsets) {
+        std::string extensionless = outputName;
+        size_t extPos = outputName.find_first_of('.');
+        if (extPos != std::string::npos)
+        {
+            extensionless = outputName.substr(0, extPos);
+        }
+        FILE *out = fopen((outputPath + extensionless + ".txt").c_str(), "wb");
+        if (!out)
+            ABORT("Failed to open output file for symbol offsets");
+        if (scale.x != scale.y)
+            ABORT("Unexpected difference between scale.x and scale.y");
+        float scaleX = scale.x;
+        fwrite(&scaleX, sizeof(float), 1, out);
+        float translateX = translate.x;
+        fwrite(&translateX, sizeof(float), 1, out);
+        float translateY = translate.y;
+        fwrite(&translateY, sizeof(float), 1, out);
+        int pxRangeInteger = lroundl(pxRange);
+        fwrite(&pxRangeInteger, sizeof(int), 1, out);
+        fclose(out);
+    }
+
     // Print metrics
     if (mode == METRICS || printMetrics) {
         FILE *out = stdout;
         if (mode == METRICS && outputSpecified)
-            out = fopen(output, "w");
+            out = fopen(outputName.c_str(), "w");
         if (!out)
             ABORT("Failed to write output file.");
         if (shape.inverseYAxis)
@@ -763,129 +749,90 @@ int main(int argc, const char * const *argv) {
     }
 
     // Compute output
-    Bitmap<float> sdf;
+    Bitmap<uint8_t> sdf;
     Bitmap<FloatRGB> msdf;
     switch (mode) {
         case SINGLE: {
-            sdf = Bitmap<float>(width, height);
-            switch( legacyMode ) {
-                case 2:
-                    generateSDF_v2(sdf, shape, range, scale, translate);
-                    break;
-                case 1:
-                    generateSDF_v1(sdf, shape, range, scale, translate);
-                    break;
-                default:
-                    generateSDF(sdf, shape, range, scale, translate);
-            }
+            sdf = Bitmap<uint8_t>(width, height);
+            generateSDF(sdf, shape, bounds.l, range, scale, translate);
             break;
         }
-        case PSEUDO: {
-            sdf = Bitmap<float>(width, height);
-            switch( legacyMode ) {
-                case 2:
-                    generatePseudoSDF_v2(sdf, shape, range, scale, translate);
-                    break;
-                case 1:
-                    generatePseudoSDF_v1(sdf, shape, range, scale, translate);
-                    break;
-                default:
-                    generatePseudoSDF(sdf, shape, range, scale, translate);
-            }
-            break;
-        }
-        case MULTI: {
-            if (!skipColoring)
-                edgeColoringSimple(shape, angleThreshold, coloringSeed);
-            if (edgeAssignment)
-                parseColoring(shape, edgeAssignment);
-            msdf = Bitmap<FloatRGB>(width, height);
-            switch( legacyMode ) {
-                case 2:
-                    generateMSDF_v2(msdf, shape, range, scale, translate, edgeThreshold);
-                    break;
-                case 1:
-                    generateMSDF_v1(msdf, shape, range, scale, translate, edgeThreshold);
-                    break;
-                default:
-                    generateMSDF(msdf, shape, range, scale, translate, edgeThreshold);
-                    break;
-            }
-            break;
-        }
+        //case PSEUDO:
+        //    generatePseudoSDF(sdf, shape, range, scale, translate);
+        //    break;
+        //}
+        //case MULTI: {
+        //    if (!skipColoring)
+        //        edgeColoringSimple(shape, angleThreshold, coloringSeed);
+        //    if (edgeAssignment)
+        //        parseColoring(shape, edgeAssignment);
+        //    msdf = Bitmap<FloatRGB>(width, height);
+        //    generateMSDF(msdf, shape, range, scale, translate, edgeThreshold);
+        //    break;
+        //}
         default:
             break;
     }
 
     // This guess doesn't work when using fill rules, so skip it.
-    if (orientation == GUESS && (legacyMode == 1 || legacyMode == 2)) {
+    if (orientation == GUESS) {
         // Get sign of signed distance outside bounds
         Point2 p(bounds.l-(bounds.r-bounds.l)-1, bounds.b-(bounds.t-bounds.b)-1);
-        double dummy;
-        SignedDistance minDistance;
+		float minDistance = DBL_MAX;
         for (std::vector<Contour>::const_iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour)
-            for (std::vector<EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge) {
-                SignedDistance distance = (*edge)->signedDistance(p, dummy);
+            for (std::vector<EdgeSegment>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge) {
+                float distance = edge->signedDistance(p);
                 if (distance < minDistance)
                     minDistance = distance;
             }
-        orientation = minDistance.distance <= 0 ? KEEP : REVERSE;
+        orientation = minDistance <= 0 ? KEEP : REVERSE;
     }
     if (orientation == REVERSE) {
         invertColor(sdf);
         invertColor(msdf);
     }
 
-    // Save output
-    if (shapeExport) {
-        FILE *file = fopen(shapeExport, "w");
-        if (file) {
-            writeShapeDescription(file, shape);
-            fclose(file);
-        } else
-            puts("Failed to write shape export file.");
-    }
     const char *error = NULL;
     switch (mode) {
         case SINGLE:
         case PSEUDO:
-            error = writeOutput(sdf, output, format);
+            error = writeOutput(sdf, outputPath + outputName, format);
             if (error)
                 ABORT(error);
-            if (testRenderMulti || testRender)
-                simulate8bit(sdf);
-            if (testRenderMulti) {
-                Bitmap<FloatRGB> render(testWidthM, testHeightM);
-                renderSDF(render, sdf, avgScale*range);
-                if (!savePng(render, testRenderMulti))
-                    puts("Failed to write test render file.");
-            }
-            if (testRender) {
-                Bitmap<float> render(testWidth, testHeight);
-                renderSDF(render, sdf, avgScale*range);
-                if (!savePng(render, testRender))
-                    puts("Failed to write test render file.");
-            }
+            //if (testRenderMulti || testRender)
+            //    simulate8bit(sdf);
+            //if (testRenderMulti) {
+            //    Bitmap<FloatRGB> render(testWidthM, testHeightM);
+            //    renderSDF(render, sdf, avgScale*range);
+            //    if (!savePng(render, testRenderMulti))
+            //        puts("Failed to write test render file.");
+            //}
+        //    if (testRender) {
+        //        Bitmap<float> render(testWidth, testHeight);
+        //        renderSDF(render, sdf, avgScale*range);
+        //        if (!savePng(render, testRender))
+        //            puts("Failed to write test render file.");
+        //    }
             break;
-        case MULTI:
-            error = writeOutput(msdf, output, format);
-            if (error)
-                ABORT(error);
-            if (testRenderMulti || testRender)
-                simulate8bit(msdf);
-            if (testRenderMulti) {
-                Bitmap<FloatRGB> render(testWidthM, testHeightM);
-                renderSDF(render, msdf, avgScale*range);
-                if (!savePng(render, testRenderMulti))
-                    puts("Failed to write test render file.");
-            }
-            if (testRender) {
-                Bitmap<float> render(testWidth, testHeight);
-                renderSDF(render, msdf, avgScale*range);
-                if (!savePng(render, testRender))
-                    ABORT("Failed to write test render file.");
-            }
-            break;
+        //case MULTI:
+        //    error = writeOutput(msdf, outputPath + outputName, format);
+        //    if (error)
+        //        ABORT(error);
+        //    if (testRenderMulti || testRender)
+        //        simulate8bit(msdf);
+        //    if (testRenderMulti) {
+        //        Bitmap<FloatRGB> render(testWidthM, testHeightM);
+        //        renderSDF(render, msdf, avgScale*range);
+        //        if (!savePng(render, testRenderMulti))
+        //            puts("Failed to write test render file.");
+        //    }
+        //    if (testRender) {
+        //        Bitmap<float> render(testWidth, testHeight);
+        //        renderSDF(render, msdf, avgScale*range);
+        //        if (!savePng(render, testRender))
+        //            ABORT("Failed to write test render file.");
+        //    }
+        //    break;
         default:
             break;
     }

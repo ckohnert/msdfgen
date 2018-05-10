@@ -35,9 +35,6 @@
     <ClInclude Include="core\edge-coloring.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="core\EdgeHolder.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="core\edge-segments.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -54,9 +51,6 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="core\Shape.h">
-      <Filter>Core</Filter>
-    </ClInclude>
-    <ClInclude Include="core\shape-description.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="core\Vector2.h">
@@ -92,9 +86,6 @@
     <ClCompile Include="core\edge-coloring.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="core\EdgeHolder.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
     <ClCompile Include="core\edge-segments.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -117,9 +108,6 @@
       <Filter>Extensions</Filter>
     </ClCompile>
     <ClCompile Include="core\Shape.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="core\shape-description.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="core\SignedDistance.cpp">

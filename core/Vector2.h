@@ -1,8 +1,8 @@
 
 #pragma once
 
+#include "arithmetics.hpp"
 #include <cstdlib>
-#include <cmath>
 
 namespace msdfgen {
 
@@ -13,18 +13,24 @@ namespace msdfgen {
 */
 struct Vector2 {
 
-    static double Epsilon;
+    static constexpr double Epsilon = 0.01;
     
     double x, y;
 
-    Vector2(double val = 0);
-    Vector2(double x, double y);
+    Vector2(double val = 0) : x(val), y(val) { }
+    Vector2(double x, double y) : x(x), y(y) { }
     /// Sets the vector to zero.
     void reset();
     /// Sets individual elements of the vector.
     void set(double x, double y);
+	/// Returns the vector's square length.
+	double squareLength() const {
+		return x * x + y * y;
+	}
     /// Returns the vector's length.
-    double length() const;
+    double length() const {
+		return approxSquareRoot(x*x + y*y);
+	}
     /// Returns the angle of the vector in radians (atan2).
     double direction() const;
     /// Returns the normalized vector - one that has the same direction but unit length.
@@ -55,9 +61,13 @@ struct Vector2 {
     Vector2 & operator/=(double value);
     bool same(const Vector2 &other) const;
     /// Dot product of two vectors.
-    friend double dotProduct(const Vector2 &a, const Vector2 &b);
+    friend double dotProduct(const Vector2 &a, const Vector2 &b) {
+		return a.x*b.x + a.y*b.y;
+	}
     /// A special version of the cross product for 2D vectors (returns scalar value).
-    friend double crossProduct(const Vector2 &a, const Vector2 &b);
+    friend double crossProduct(const Vector2 &a, const Vector2 &b) {
+		return a.x*b.y - a.y*b.x;
+	}
     friend Vector2 operator*(double value, const Vector2 &vector);
     friend Vector2 operator/(double value, const Vector2 &vector);
 
